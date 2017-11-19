@@ -110,6 +110,15 @@ app.post('/users', function (req, res) {
     });
 });
 
+/**
+ * Adds a new message to the database.
+ * 
+ * @param connection - current connection to the database
+ * @param threadID - ID of the thread to which the message belongs
+ * @param senderID - ID of the user who sent the message
+ * @param message - message (text-only, image link, or video link)
+ * @param {success: true/false, message: "[response conveying status of message]"}
+ */
 var addMessage = function(connection, threadID, senderID, message, callback) {
     var insertMessage = "INSERT INTO message(content, sender_id, thread_id) VALUES ('" + message + "', " + senderID + ", " + threadID + ")";
     console.log(insertMessage);
@@ -124,7 +133,7 @@ var addMessage = function(connection, threadID, senderID, message, callback) {
         // add to thread_message table
         var newThreadMessage = "INSERT INTO thread_message(thread_id, message_id) VALUES (" + threadID + ", " + messageID + ")";
         console.log(newThreadMessage);
-        
+
         connection.query(newThreadMessage, function (err, results) {
             if (err) {
                 callback({ success: false, message: "Message not sent. Please try again!"});
