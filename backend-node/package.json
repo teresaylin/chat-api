@@ -1,0 +1,8 @@
+{
+    "dependencies": {
+        "express": "^4.15.3",
+        "body-parser": "^1.17.2",
+        "mysql": "^2.13.0",
+        "bcrypt": "~1.0.3"
+    }
+}

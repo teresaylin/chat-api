@@ -1,0 +1,17 @@
+USE challenge;
+
+CREATE TABLE test(col VARCHAR(10));
+
+INSERT INTO test(col) VALUES('ok');
+
+
+CREATE TABLE user(id INT AUTO_INCREMENT PRIMARY KEY, username VARCHAR(20), password VARCHAR(30));
+
+CREATE TABLE thread(id INT AUTO_INCREMENT PRIMARY KEY, user_id_1 INT, user_id_2 INT);
+
+CREATE TABLE message(id INT AUTO_INCREMENT PRIMARY KEY, time DATETIME, content TEXT, width INT, height INT, videolength INT, source TEXT, sender_id INT, thread_id INT);
+
+CREATE TABLE thread_message(thread_id INT NOT NULL, message_id INT NOT NULL);
+
+INSERT INTO user(username, password) VALUES ('teresa', 'apples');
+INSERT INTO user(username, password) VALUES ('bob', 'oranges');
