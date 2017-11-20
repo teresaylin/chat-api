@@ -30,9 +30,13 @@ app.get('/users/:usn', function (req, res) {
                 return;
             }
             console.log(results);
-            res.json({
-                usn: results[0].username
-            });
+            if (results.length > 0) {
+                res.json({
+                    pwd: results[0].password
+                });
+            } else {
+                res.status(400).send("User does not exist");
+            }
             connection.release();
         });
     });
@@ -87,19 +91,54 @@ app.post('/users', function (req, res) {
 });
 
 /**
- * Adds a new message to the database.
+ * Prepares a message to be added to the database.
  * 
  * @param connection - current connection to the database
  * @param threadID - ID of the thread to which the message belongs
  * @param senderID - ID of the user who sent the message
  * @param message - message (text-only, image link, or video link)
+ *        image can only be JPG, PNG, or GIF
+ *        videos can only be from youtube or vevo
  * @param {success: true/false, message: "[response conveying status of message]"}
  */
-var addMessage = function(connection, threadID, senderID, message, callback) {
-    var insertMessage = "INSERT INTO message(content, sender_id, thread_id) VALUES ('" + message + "', " + senderID + ", " + threadID + ")";
-    console.log(insertMessage);
+var sendMessage = function(connection, threadID, senderID, message, callback) {
+    // parse message for text-only vs image link vs video link
+    if (message.includes(".jpg") || message.includes(".png") || message.includes(".gif")) {
+        // save metadata: width and height hardcoded to 500 and 400 pixels respectively
+        var insertMessage = "INSERT INTO message(content, sender_id, thread_id, width, height) VALUES ('" + message + "', " + senderID + ", " + threadID + ", " + 500 + ", " + 400 + ")";
+        createNewMessage(connection, insertMessage, threadID, function (data) {
+            callback(data);
+            return;
+        });
+    } else if (message.includes("youtube") || message.includes("vevo")) {
+        // save metadata: videolength hardcoded to 60 minutes * 60 seconds = 3600 seconds
+        var src = message.includes("youtube") ? "Youtube" : "Vevo";
+        var insertMessage = "INSERT INTO message(content, sender_id, thread_id, videolength, source) VALUES ('" + message + "', " + senderID + ", " + threadID + ", " + 3600 + ", '" + src + "')";
+        createNewMessage(connection, insertMessage, threadID, function (data) {
+            callback(data);
+            return;
+        });
+    } else {
+        // text message
+        var insertMessage = "INSERT INTO message(content, sender_id, thread_id) VALUES ('" + message + "', " + senderID + ", " + threadID + ")";
+        createNewMessage(connection, insertMessage, threadID, function (data) {
+            callback(data);
+            return;
+        });
+    }
+};
 
-    connection.query(insertMessage, function (err, results) {
+/**
+ * Adds a new message to the database.
+ * 
+ * @param connection - current connection to the database
+ * @param query - the insert statement for the db to execute
+ * @param threadID - ID of the thread to which the message belongs
+ * @param {success: true/false, message: "[response conveying status of message]"}
+ */
+var createNewMessage = function(connection, query, threadID, callback) {
+    console.log(query);
+    connection.query(query, function (err, results) {
         if (err) {
             callback({ success: false, message: "Message not sent. Try again!"});
             return;
@@ -118,7 +157,7 @@ var addMessage = function(connection, threadID, senderID, message, callback) {
             callback({ success: true, message: "Message sent!"});
         });
     });
-}
+};
 
 /**
  * Gets all the messages between two users, ordered from oldest to newest.
@@ -194,7 +233,7 @@ app.get('/messages/:username1/:username2', function (req, res) {
 });
 
 /**
- * Gets a specified number of messages between two users, ordered from oldest to newest.
+ * Given a specified number X of messages, fetches the oldest X messages between two users.
  * 
  * @param  username1 - username of one user
  * @param  username2 - username of other user
@@ -350,6 +389,9 @@ app.get('/messages/:username1/:username2/numMessages/:number/page/:pagenumber', 
  * Sends a message from one user to another.
  * 
  * @param  req - JSON containing 'from', 'to', and 'message'
+ *         'from'    - username of sender
+ *         'to'      - username of recipient
+ *         'message' - text-only, an image link, or a video link
  * @return 200 HTTP code, or 400 HTTP code if error sending message
  *
  * Example request: curl -i -X POST http://localhost:18000/messages -d '{"from":"teresa", "to":"bob", "message":"hi"}' -H "Content-Type: application/json"
@@ -402,7 +444,7 @@ app.post('/messages', function (req, res) {
                                 return;
                             }
                             var threadID = results.insertId;
-                            addMessage(connection, threadID, sender.id, msg.message, function (data) {
+                            sendMessage(connection, threadID, sender.id, msg.message, function (data) {
                                 if (data.success) {
                                     res.status(200).send(data.message);
                                 } else {
@@ -413,7 +455,7 @@ app.post('/messages', function (req, res) {
                     } else if (results.length == 1) {
                         // found a thread
                         var threadID = results[0].id;
-                        addMessage(connection, threadID, sender.id, msg.message, function (data) {
+                        sendMessage(connection, threadID, sender.id, msg.message, function (data) {
                             if (data.success) {
                                 res.status(200).send(data.message);
                             } else {
