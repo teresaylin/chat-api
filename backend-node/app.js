@@ -77,6 +77,7 @@ var sendMessage = function(connection, threadID, senderID, message, callback) {
     // parse message for text-only vs image link vs video link
     if (message.includes(".jpg") || message.includes(".png") || message.includes(".gif")) {
         // save metadata: width and height hardcoded to 500 and 400 pixels respectively
+        console.log("Found image link");
         var insertMessage = "INSERT INTO message(content, sender_id, thread_id, width, height) VALUES ('" + message + "', " + senderID + ", " + threadID + ", " + 500 + ", " + 400 + ")";
         createNewMessage(connection, insertMessage, threadID, function (data) {
             callback(data);
@@ -84,6 +85,7 @@ var sendMessage = function(connection, threadID, senderID, message, callback) {
         });
     } else if (message.includes("youtube") || message.includes("vevo")) {
         // save metadata: videolength hardcoded to 60 minutes * 60 seconds = 3600 seconds
+        console.log("Found video link");
         var src = message.includes("youtube") ? "Youtube" : "Vevo";
         var insertMessage = "INSERT INTO message(content, sender_id, thread_id, videolength, source) VALUES ('" + message + "', " + senderID + ", " + threadID + ", " + 3600 + ", '" + src + "')";
         createNewMessage(connection, insertMessage, threadID, function (data) {
@@ -92,6 +94,7 @@ var sendMessage = function(connection, threadID, senderID, message, callback) {
         });
     } else {
         // text message
+        console.log("Text only message");
         var insertMessage = "INSERT INTO message(content, sender_id, thread_id) VALUES ('" + message + "', " + senderID + ", " + threadID + ")";
         createNewMessage(connection, insertMessage, threadID, function (data) {
             callback(data);
@@ -114,17 +117,7 @@ var createNewMessage = function(connection, query, threadID, callback) {
             callback({ success: false, message: "Message not sent. Try again!"});
             return;
         }
-        var messageID = results.insertId;
-
-        // add to thread_message table
-        var newThreadMessage = "INSERT INTO thread_message(thread_id, message_id) VALUES (" + threadID + ", " + messageID + ")";
-        connection.query(newThreadMessage, function (err, results) {
-            if (err) {
-                callback({ success: false, message: "Message not sent. Please try again!"});
-                return;
-            }
-            callback({ success: true, message: "Message sent!"});
-        });
+        callback({ success: true, message: "Message sent!" });
     });
 };
 
