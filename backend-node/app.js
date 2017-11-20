@@ -68,7 +68,8 @@ app.get('/users/:usn', function (req, res) {
 });
 
 /**
- * HTTP POST /users
+ * Adds a new user, with a username and password.
+ * 
  * @param  req - JSON containing 'username' and 'password' (ex: 'username': 'bob', 'password': 'apples'})
  * @return 200 HTTP code, or 400 HTTP code if user already exists
  *
@@ -144,9 +145,80 @@ var addMessage = function(connection, threadID, senderID, message, callback) {
     });
 }
 
+/**
+ * Gets the messages between two users, ordered from oldest to newest.
+ * 
+ * @param  req - JSON containing 'user1' (username), 'user2' (username)
+ * @return 200 HTTP code, or 404 HTTP code if error getting messages
+ */
+app.get('/messages/:username1/:username2', function (req, res) {
+    var request = req.params;
+
+    db.getConnection(function (err, connection) {
+        if (err) {
+            res.status(400).send(err.message);
+            return;
+        }
+
+        // check that both sender and recipient exist
+        connection.query("SELECT id, username FROM user WHERE username = '" + request.username1 + "' OR username = '" + request.username2 + "'", function (err, results, fields) {
+            if (err) {
+                // error querying db
+                res.status(400).send(err.message);
+                connection.release();
+                return;
+            }
+            if (results.length==2) {
+                // both sender and recipient exist in db
+                // find common thread between sender and recipient if it exists
+                var user1 = results[0];
+                var user2 = results[1];
+                var commonThread = "SELECT id FROM thread WHERE (user_id_1 = '" + user1.id + "' AND user_id_2 = '" + user2.id + "') OR (user_id_1 = '" + user2.id + "' AND user_id_2 = '" + user1.id + "')";
+
+                connection.query(commonThread, function (err, results) {
+                    if (err) {
+                        res.status(400).send(err.message);
+                        return;
+                    }
+                    console.log(results);
+                    if (results.length > 1) {
+                        res.status(404).send("Error: more than 1 thread found between " + request.username1 + " and " + request.username2);
+                    }
+                    else if (results.length == 0) {
+                        // no thread exists
+                        res.status(404).send("0 messages between " + request.username1 + " and " + request.username2);
+                    } else if (results.length == 1) {
+                        // found a thread
+                        var threadID = results[0].id;
+                        var messageQuery = "SELECT content, sender_id AS sender, time FROM message WHERE thread_id = " + threadID + " ORDER BY time ASC";
+
+                        connection.query(messageQuery, function (err, results) {
+                            if (err) {
+                                res.status(400).send(err.message);
+                                return;
+                            }
+                            // change sender ID to sender username for easier usability
+                            var results_processed = results;
+                            results_processed.forEach(function (result) {
+                                var id = result["sender"];
+                                result["sender"] = id == user1.id ? user1.username : user2.username;
+                            });
+                            res.json(results_processed);
+                        });
+                    }
+                });
+            } else {
+                res.status(400).send("One or both of the users does not exist.");
+            }
+        });
+        connection.release();
+    });
+});
+
 
 /**
- * HTTP POST /messages
+ * Sends a message from one user to another.
+ * 
  * @param  req - JSON containing 'from', 'to', and 'message'
  * @return 200 HTTP code, or 400 HTTP code if error sending message
  *
@@ -174,7 +246,6 @@ app.post('/messages', function (req, res) {
                 // both sender and recipient exist in db
                 var sender = results[0].username == msg.from ? results[0] : results[1];
                 var recipient = results[0].username == msg.to ? results[0] : results[1];
-
                 // find common thread between sender and recipient if it exists
 
                 // var senderThreads = "SELECT thread_id FROM user_thread WHERE user_id = '" + sender.id + "'";
@@ -228,7 +299,6 @@ app.post('/messages', function (req, res) {
         connection.release();
     });
 });
-
 
 
 app.listen(8000, function() {
