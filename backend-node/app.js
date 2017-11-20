@@ -146,9 +146,10 @@ var addMessage = function(connection, threadID, senderID, message, callback) {
 }
 
 /**
- * Gets the messages between two users, ordered from oldest to newest.
+ * Gets all the messages between two users, ordered from oldest to newest.
  * 
- * @param  req - JSON containing 'user1' (username), 'user2' (username)
+ * @param  username1 - username of one user
+ * @param  username2 - username of other user
  * @return 200 HTTP code, or 404 HTTP code if error getting messages
  */
 app.get('/messages/:username1/:username2', function (req, res) {
@@ -214,7 +215,6 @@ app.get('/messages/:username1/:username2', function (req, res) {
         connection.release();
     });
 });
-
 
 /**
  * Sends a message from one user to another.
