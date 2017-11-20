@@ -13,32 +13,6 @@ const db = mysql.createPool({
 
 app.use(bodyParser.json());
 
-app.get('/test', function (req, res) {
-    console.log(req.body);
-    db.getConnection(function (err, connection) {
-        if (err) {
-            console.log("error connecting")
-            res.status(400).send(err.message);
-            return;
-        }
-        connection.query('SELECT username FROM user', function (err, results, fields) {
-            if (err) {
-                // error querying db
-                res.status(400).send(err.message);
-                connection.release();
-                return;
-            }
-            console.log(results);
-            res.json({
-                usn: results[0].username,
-                id: results[0].id,
-                backend: 'nodejs',
-            });
-            connection.release();
-        });
-    });
-});
-
 app.get('/users/:usn', function (req, res) {
     // var user = req.body; 
     // console.log(user);   // {}
@@ -51,7 +25,7 @@ app.get('/users/:usn', function (req, res) {
             res.status(400).send(err.message);
             return;
         }
-        connection.query("SELECT password FROM user WHERE username = '" + username + "'", function (err, results, fields) {
+        connection.query("SELECT password FROM user WHERE username = '" + username + "'", function (err, results) {
             if (err) {
                 // error querying db
                 res.status(400).send(err.message);
@@ -85,7 +59,7 @@ app.post('/users', function (req, res) {
         }
         
         // first check if username is taken
-        connection.query("SELECT username FROM user WHERE username = '" + user.username + "'", function (err, results, fields) {
+        connection.query("SELECT username FROM user WHERE username = '" + user.username + "'", function (err, results) {
             if (err) {
                 // error querying db
                 res.status(400).send(err.message);
@@ -164,7 +138,7 @@ app.get('/messages/:username1/:username2', function (req, res) {
         }
 
         // check that both sender and recipient exist
-        connection.query("SELECT id, username FROM user WHERE username = '" + request.username1 + "' OR username = '" + request.username2 + "'", function (err, results, fields) {
+        connection.query("SELECT id, username FROM user WHERE username = '" + request.username1 + "' OR username = '" + request.username2 + "'", function (err, results) {
             if (err) {
                 // error querying db
                 res.status(400).send(err.message);
@@ -239,7 +213,7 @@ app.get('/messages/:username1/:username2/numMessages/:number', function (req, re
         }
 
         // check that both sender and recipient exist
-        connection.query("SELECT id, username FROM user WHERE username = '" + request.username1 + "' OR username = '" + request.username2 + "'", function (err, results, fields) {
+        connection.query("SELECT id, username FROM user WHERE username = '" + request.username1 + "' OR username = '" + request.username2 + "'", function (err, results) {
             if (err) {
                 // error querying db
                 res.status(400).send(err.message);
@@ -316,7 +290,7 @@ app.get('/messages/:username1/:username2/numMessages/:number/page/:pagenumber', 
         }
 
         // check that both sender and recipient exist
-        connection.query("SELECT id, username FROM user WHERE username = '" + request.username1 + "' OR username = '" + request.username2 + "'", function (err, results, fields) {
+        connection.query("SELECT id, username FROM user WHERE username = '" + request.username1 + "' OR username = '" + request.username2 + "'", function (err, results) {
             if (err) {
                 // error querying db
                 res.status(400).send(err.message);
@@ -389,7 +363,7 @@ app.post('/messages', function (req, res) {
         }
 
         // check that both sender and recipient exist
-        connection.query("SELECT id, username FROM user WHERE username = '" + msg.from + "' OR username = '" + msg.to + "'", function (err, results, fields) {
+        connection.query("SELECT id, username FROM user WHERE username = '" + msg.from + "' OR username = '" + msg.to + "'", function (err, results) {
             if (err) {
                 // error querying db
                 res.status(400).send(err.message);
