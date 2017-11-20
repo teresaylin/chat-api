@@ -391,10 +391,6 @@ app.post('/messages', function (req, res) {
                 var sender = results[0].username == msg.from ? results[0] : results[1];
                 var recipient = results[0].username == msg.to ? results[0] : results[1];
                 // find common thread between sender and recipient if it exists
-
-                // var senderThreads = "SELECT thread_id FROM user_thread WHERE user_id = '" + sender.id + "'";
-                // var recipientThreads = "SELECT thread_id FROM user_thread WHERE user_id = '" + recipient.id + "'";
-                // var commonThread = "SELECT thread_id FROM user_thread WHERE user_id='" + recipient.id + "' AND thread_id IN (" + senderThreads + ")";
                 var commonThread = "SELECT id FROM thread WHERE (user_id_1 = '" + sender.id + "' AND user_id_2 = '" + recipient.id + "') OR (user_id_1 = '" + recipient.id + "' AND user_id_2 = '" + sender.id + "')";
 
                 connection.query(commonThread, function (err, results) {
