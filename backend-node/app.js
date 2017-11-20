@@ -151,6 +151,8 @@ var addMessage = function(connection, threadID, senderID, message, callback) {
  * @param  username1 - username of one user
  * @param  username2 - username of other user
  * @return 200 HTTP code, or 404 HTTP code if error getting messages
+ *
+ * Example request: curl -i http://localhost:18000/messages/bob/teresa
  */
 app.get('/messages/:username1/:username2', function (req, res) {
     var request = req.params;
@@ -191,7 +193,82 @@ app.get('/messages/:username1/:username2', function (req, res) {
                     } else if (results.length == 1) {
                         // found a thread
                         var threadID = results[0].id;
-                        var messageQuery = "SELECT content, sender_id AS sender, time FROM message WHERE thread_id = " + threadID + " ORDER BY time ASC";
+                        var messageQuery = "SELECT content AS message, sender_id AS sender, time FROM message WHERE thread_id = " + threadID + " ORDER BY time ASC";
+
+                        connection.query(messageQuery, function (err, results) {
+                            if (err) {
+                                res.status(400).send(err.message);
+                                return;
+                            }
+                            // change sender ID to sender username for easier usability
+                            var results_processed = results;
+                            results_processed.forEach(function (result) {
+                                var id = result["sender"];
+                                result["sender"] = id == user1.id ? user1.username : user2.username;
+                            });
+                            res.json(results_processed);
+                        });
+                    }
+                });
+            } else {
+                res.status(400).send("One or both of the users does not exist.");
+            }
+        });
+        connection.release();
+    });
+});
+
+/**
+ * Gets a specified number of messages between two users, ordered from oldest to newest.
+ * 
+ * @param  username1 - username of one user
+ * @param  username2 - username of other user
+ * @param  number - number of messages to display
+ * @return 200 HTTP code, or 404 HTTP code if error getting messages
+ *
+ * Example request: curl -i http://localhost:18000/messages/bob/teresa/numMessages/3
+ */
+app.get('/messages/:username1/:username2/numMessages/:number', function (req, res) {
+    var request = req.params;
+    var numMsgs = request.number;
+
+    db.getConnection(function (err, connection) {
+        if (err) {
+            res.status(400).send(err.message);
+            return;
+        }
+
+        // check that both sender and recipient exist
+        connection.query("SELECT id, username FROM user WHERE username = '" + request.username1 + "' OR username = '" + request.username2 + "'", function (err, results, fields) {
+            if (err) {
+                // error querying db
+                res.status(400).send(err.message);
+                connection.release();
+                return;
+            }
+            if (results.length==2) {
+                // both sender and recipient exist in db
+                // find common thread between sender and recipient if it exists
+                var user1 = results[0];
+                var user2 = results[1];
+                var commonThread = "SELECT id FROM thread WHERE (user_id_1 = '" + user1.id + "' AND user_id_2 = '" + user2.id + "') OR (user_id_1 = '" + user2.id + "' AND user_id_2 = '" + user1.id + "')";
+
+                connection.query(commonThread, function (err, results) {
+                    if (err) {
+                        res.status(400).send(err.message);
+                        return;
+                    }
+                    console.log(results);
+                    if (results.length > 1) {
+                        res.status(404).send("Error: more than 1 thread found between " + request.username1 + " and " + request.username2);
+                    }
+                    else if (results.length == 0) {
+                        // no thread exists
+                        res.status(404).send("0 messages between " + request.username1 + " and " + request.username2);
+                    } else if (results.length == 1) {
+                        // found a thread
+                        var threadID = results[0].id;
+                        var messageQuery = "SELECT content AS message, sender_id AS sender, time FROM message WHERE thread_id = " + threadID + " ORDER BY time ASC LIMIT " + numMsgs;
 
                         connection.query(messageQuery, function (err, results) {
                             if (err) {
