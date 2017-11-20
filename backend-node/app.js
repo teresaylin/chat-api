@@ -14,11 +14,8 @@ const db = mysql.createPool({
 app.use(bodyParser.json());
 
 app.get('/users/:usn', function (req, res) {
-    // var user = req.body; 
-    // console.log(user);   // {}
     var username = req.params.usn;
-    console.log("getting user");
-    console.log(username);
+
     db.getConnection(function (err, connection) {
         if (err) {
             console.log("error connecting");
@@ -68,14 +65,18 @@ app.post('/users', function (req, res) {
             }
             if (results.length==0) {
                 // insert into db
-                var insertquery = "INSERT INTO user(username, password) VALUES ('" + user.username + "', '" + user.password + "')";
-                connection.query(insertquery, function (err, results) {
-                    if (err) {
-                        res.status(400).send(err.message);
-                        return;
-                    }
-                    res.status(200).send("Successfully added user!");
+                bcrypt.hash(user.password, 10, function(err, hash) {
+                    var insertquery = "INSERT INTO user(username, password) VALUES ('" + user.username + "', '" + hash + "')";
+                    connection.query(insertquery, function (err, results) {
+                        if (err) {
+                            res.status(400).send(err.message);
+                            return;
+                        }
+                        res.status(200).send("Successfully added user!");
+                    });
                 });
+
+                
             } else {
                 // found username so return error
                 res.status(400).send("Username already taken!");
