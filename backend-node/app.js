@@ -13,35 +13,6 @@ const db = mysql.createPool({
 
 app.use(bodyParser.json());
 
-app.get('/users/:usn', function (req, res) {
-    var username = req.params.usn;
-
-    db.getConnection(function (err, connection) {
-        if (err) {
-            console.log("error connecting");
-            res.status(400).send(err.message);
-            return;
-        }
-        connection.query("SELECT password FROM user WHERE username = '" + username + "'", function (err, results) {
-            if (err) {
-                // error querying db
-                res.status(400).send(err.message);
-                connection.release();
-                return;
-            }
-            console.log(results);
-            if (results.length > 0) {
-                res.json({
-                    pwd: results[0].password
-                });
-            } else {
-                res.status(400).send("User does not exist");
-            }
-            connection.release();
-        });
-    });
-});
-
 /**
  * Adds a new user, with a username and password.
  * 
@@ -52,6 +23,7 @@ app.get('/users/:usn', function (req, res) {
  */
 app.post('/users', function (req, res) {
     var user = req.body;
+    console.log("Creating new user...");
 
     db.getConnection(function (err, connection) {
         if (err) {
@@ -76,11 +48,10 @@ app.post('/users', function (req, res) {
                             res.status(400).send(err.message);
                             return;
                         }
+                        console.log("Created user: " + user.username);
                         res.status(200).send("Successfully added user!");
                     });
                 });
-
-                
             } else {
                 // found username so return error
                 res.status(400).send("Username already taken!");
@@ -88,6 +59,7 @@ app.post('/users', function (req, res) {
             connection.release();
         });
     });
+    console.log("Done");
 });
 
 /**
@@ -137,7 +109,6 @@ var sendMessage = function(connection, threadID, senderID, message, callback) {
  * @param {success: true/false, message: "[response conveying status of message]"}
  */
 var createNewMessage = function(connection, query, threadID, callback) {
-    console.log(query);
     connection.query(query, function (err, results) {
         if (err) {
             callback({ success: false, message: "Message not sent. Try again!"});
@@ -147,8 +118,6 @@ var createNewMessage = function(connection, query, threadID, callback) {
 
         // add to thread_message table
         var newThreadMessage = "INSERT INTO thread_message(thread_id, message_id) VALUES (" + threadID + ", " + messageID + ")";
-        console.log(newThreadMessage);
-
         connection.query(newThreadMessage, function (err, results) {
             if (err) {
                 callback({ success: false, message: "Message not sent. Please try again!"});
@@ -170,6 +139,7 @@ var createNewMessage = function(connection, query, threadID, callback) {
  */
 app.get('/messages/:username1/:username2', function (req, res) {
     var request = req.params;
+    console.log("Fetching messages between " + request.username1 + " and " + request.username2);
 
     db.getConnection(function (err, connection) {
         if (err) {
@@ -197,7 +167,6 @@ app.get('/messages/:username1/:username2', function (req, res) {
                         res.status(400).send(err.message);
                         return;
                     }
-                    console.log(results);
                     if (results.length > 1) {
                         res.status(404).send("Error: more than 1 thread found between " + request.username1 + " and " + request.username2);
                     }
@@ -229,6 +198,7 @@ app.get('/messages/:username1/:username2', function (req, res) {
             }
         });
         connection.release();
+        console.log("Done");
     });
 });
 
@@ -245,6 +215,7 @@ app.get('/messages/:username1/:username2', function (req, res) {
 app.get('/messages/:username1/:username2/numMessages/:number', function (req, res) {
     var request = req.params;
     var numMsgs = request.number;
+    console.log("Fetching first " + numMsgs + " messages between " + request.username1 + " and " + request.username2);
 
     db.getConnection(function (err, connection) {
         if (err) {
@@ -272,7 +243,6 @@ app.get('/messages/:username1/:username2/numMessages/:number', function (req, re
                         res.status(400).send(err.message);
                         return;
                     }
-                    console.log(results);
                     if (results.length > 1) {
                         res.status(404).send("Error: more than 1 thread found between " + request.username1 + " and " + request.username2);
                     }
@@ -304,6 +274,7 @@ app.get('/messages/:username1/:username2/numMessages/:number', function (req, re
             }
         });
         connection.release();
+        console.log("Done");
     });
 });
 
@@ -322,6 +293,7 @@ app.get('/messages/:username1/:username2/numMessages/:number/page/:pagenumber', 
     var request = req.params;
     var numMsgs = request.number;
     var page = request.pagenumber;
+    console.log("Fetching page " + page + " of messages between " + request.username1 + " and " + request.username2);
 
     db.getConnection(function (err, connection) {
         if (err) {
@@ -349,7 +321,6 @@ app.get('/messages/:username1/:username2/numMessages/:number/page/:pagenumber', 
                         res.status(400).send(err.message);
                         return;
                     }
-                    console.log(results);
                     if (results.length > 1) {
                         res.status(404).send("Error: more than 1 thread found between " + request.username1 + " and " + request.username2);
                     }
@@ -382,6 +353,7 @@ app.get('/messages/:username1/:username2/numMessages/:number/page/:pagenumber', 
             }
         });
         connection.release();
+        console.log("Done");
     });
 });
 
@@ -398,6 +370,7 @@ app.get('/messages/:username1/:username2/numMessages/:number/page/:pagenumber', 
  */
 app.post('/messages', function (req, res) {
     var msg = req.body;
+    console.log("Sending new message");
 
     db.getConnection(function (err, connection) {
         if (err) {
@@ -413,7 +386,6 @@ app.post('/messages', function (req, res) {
                 connection.release();
                 return;
             }
-            console.log(results);
             if (results.length==2) {
                 // both sender and recipient exist in db
                 var sender = results[0].username == msg.from ? results[0] : results[1];
@@ -430,7 +402,6 @@ app.post('/messages', function (req, res) {
                         res.status(400).send(err.message);
                         return;
                     }
-                    console.log(results);
                     if (results.length > 1) {
                         // more than one common thread --> error
                         res.status(400).send("Error: more than 1 thread found between " + msg.from + " and " + msg.to);
@@ -469,6 +440,7 @@ app.post('/messages', function (req, res) {
             }
         });
         connection.release();
+        console.log("Done");
     });
 });
 
